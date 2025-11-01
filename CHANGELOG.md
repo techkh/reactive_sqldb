@@ -1,4 +1,4 @@
-## 0.0.1
+## 1.0.0
 - Create dynamic tables at runtime with custom fields.
 - Define relational links using foreign keys.
 - Perform standard CRUD operations.

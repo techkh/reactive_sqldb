@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:reactive_sqldb/reactive_sqldb.dart';
 import 'package:reactive_sqldb/reactive_sqldb_platform_interface.dart';
 import 'package:reactive_sqldb/reactive_sqldb_method_channel.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';

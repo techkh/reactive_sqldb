@@ -40,7 +40,7 @@ class _MyAppState extends State<MyApp> {
     );
 
     ///Listen Tables
-    _reactiveSqldbPlugin.watchTable("users").listen((rows) {
+    _reactiveSqldbPlugin.watchTable("user").listen((rows) {
       print('Rows: $rows');
     });
 
@@ -52,23 +52,18 @@ class _MyAppState extends State<MyApp> {
     });
 
     ///Update by id Data
-    await _reactiveSqldbPlugin.update("user", 1, {
+    await _reactiveSqldbPlugin.update("user", 2, {
       "name": "David 1",
       "email": "david1@gmail.com",
     });
 
     //Delete by id
-    await _reactiveSqldbPlugin.delete("user", 1);
-
-    ///Get one item
-    var user = await _reactiveSqldbPlugin.get("user", {
-      "email": "david@gmail.com",
-    });
+    await _reactiveSqldbPlugin.delete("user", 2);
 
     await _reactiveSqldbPlugin.updateQuery(
-      'users',
+      'user',
       {'name': "Updated", "email": "test@mgial.com"},
-      {'id': 1},
+      {'id': 2},
     );
 
     //Get All item
@@ -86,6 +81,9 @@ class _MyAppState extends State<MyApp> {
       offset: 0,
       limit: 10,
     );
+
+    ///Get one item
+    var user = await _reactiveSqldbPlugin.get("user", {"id": 2});
 
     ///State Change
     setState(() {

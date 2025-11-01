@@ -1,7 +1,7 @@
 name: reactive_sqldb
-description: "A new Flutter plugin project."
-version: 0.0.1
-homepage:
+description: "reactive_sqldb is a powerful SQLite manager"
+version: 1.0.0
+homepage: https://github.com/techkh/reactive_sqldb
 
 environment:
   sdk: ^3.9.2
@@ -18,7 +18,8 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
-
+  integration_test:
+    sdk: flutter
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 

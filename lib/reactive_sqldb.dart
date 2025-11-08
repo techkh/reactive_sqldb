@@ -234,20 +234,27 @@ class ReactiveSqldb {
   }
 
   /// Update record by id
-  Future<void> update(String table, int id, Map<String, dynamic> record) async {
+  Future<int> update(String table, int id, Map<String, dynamic> record) async {
     final db = await getDatabase();
-    await db.update(table, record, where: 'id = ?', whereArgs: [id]);
+    final status = await db.update(
+      table,
+      record,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
     notifyTable(table);
+    return status;
   }
 
   /// Delete record by id
-  Future<void> delete(String table, int id) async {
+  Future<int> delete(String table, int id) async {
     final db = await getDatabase();
-    await db.delete(table, where: 'id = ?', whereArgs: [id]);
+    final status = await db.delete(table, where: 'id = ?', whereArgs: [id]);
     notifyTable(table);
+    return status;
   }
 
-  Future<void> updateQuery(
+  Future<int> updateQuery(
     String table,
     Map<String, dynamic> record,
     Map<String, dynamic> whereArgs,
@@ -258,9 +265,15 @@ class ReactiveSqldb {
     final whereClause = whereArgs.keys.map((k) => '$k = ?').join(' AND ');
     final whereValues = whereArgs.values.toList();
 
-    await db.update(table, record, where: whereClause, whereArgs: whereValues);
+    final status = await db.update(
+      table,
+      record,
+      where: whereClause,
+      whereArgs: whereValues,
+    );
 
     notifyTable(table); // optional: trigger UI or cache refresh
+    return status;
   }
 
   /// Get all records

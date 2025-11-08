@@ -5,7 +5,7 @@ reactive_sqldb is a powerful SQLite manager that lets you:
 - Perform standard CRUD operations.
 - Listen to reactive table updates via Streams — no manual refresh needed.
 
-[![Pub Package](https://img.shields.io/pub/v/deeplink_lisreactive_sqldbtener.svg?style=flat-square)](https://pub.dev/packages/reactive_sqldb)
+[![Pub Package](https://img.shields.io/pub/v/reactive_sqldb.svg?style=flat-square)](https://pub.dev/packages/reactive_sqldb)
 
 ### deeplink_listener  Key Features : 
 1. #### Reactive Queries
@@ -32,7 +32,7 @@ Make sure to check out [examples](https://github.com/techkh/reactive_sqldb/tree/
 Add the following line to `pubspec.yaml`:
 ```yaml
     dependencies:
-        reactive_sqldb: ^1.0.0
+        reactive_sqldb: ^1.0.1
 ```
 
 ```yaml

@@ -3,3 +3,6 @@
 - Define relational links using foreign keys.
 - Perform standard CRUD operations.
 - Listen to reactive table updates via Streams — no manual refresh needed.
+
+## 1.0.1
+- Update function return type, insert, delete , update

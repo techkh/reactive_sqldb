@@ -8,6 +8,8 @@ enum FieldType {
   BOOLEAN, // Usually stored as INTEGER 0/1
   DATE, // Stored as TEXT (ISO8601) or INTEGER (timestamp)
   DATETIME, // Stored as TEXT (ISO8601) or INTEGER (timestamp)
+  DECIMAL, // alias for NUMERIC (for precision-friendly schema)
+  FLOAT,
 }
 
 extension FieldTypeExtension on FieldType {
@@ -15,8 +17,7 @@ extension FieldTypeExtension on FieldType {
     switch (this) {
       case FieldType.PRIMARY:
         return 'INTEGER PRIMARY KEY AUTOINCREMENT';
-      case FieldType.INTEGER:
-        return 'INTEGER';
+      case FieldType.FLOAT:
       case FieldType.REAL:
         return 'REAL';
       case FieldType.TEXT:
@@ -24,7 +25,9 @@ extension FieldTypeExtension on FieldType {
       case FieldType.BLOB:
         return 'BLOB';
       case FieldType.NUMERIC:
+      case FieldType.DECIMAL:
         return 'NUMERIC';
+      case FieldType.INTEGER:
       case FieldType.BOOLEAN:
         return 'INTEGER'; // SQLite doesn’t have a boolean type
       case FieldType.DATE:

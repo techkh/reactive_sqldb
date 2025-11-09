@@ -6,3 +6,6 @@
 
 ## 1.0.1
 - Update function return type, insert, delete , update
+
+## 1.0.2
+- Add new data type.

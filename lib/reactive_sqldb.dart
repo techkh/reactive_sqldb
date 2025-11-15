@@ -61,129 +61,113 @@ class ReactiveSqldb {
   }) async {
     final db = await getDatabase();
     try {
-      // Check if table exists
       final tables = await db.rawQuery(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='$tableName'",
+        "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+        [tableName],
       );
       final tableExists = tables.isNotEmpty;
 
-      // Determine if user provided 'id' in fields
       final hasIdField = fields.keys.any((k) => k.toLowerCase() == 'id');
 
       if (!tableExists) {
-        // Table doesn't exist → create new
+        // Table doesn't exist → create
         String columns = hasIdField
             ? ''
             : 'id INTEGER PRIMARY KEY AUTOINCREMENT';
         fields.forEach((name, type) {
-          if (name.toLowerCase() == 'id' && !hasIdField)
-            return; // skip duplicate
+          if (name.toLowerCase() == 'id' && !hasIdField) return;
           columns += columns.isEmpty
               ? '$name ${type.sqlType}'
               : ', $name ${type.sqlType}';
         });
-
         if (foreignKey != null && referenceTable != null) {
           columns +=
               ', FOREIGN KEY($foreignKey) REFERENCES $referenceTable(id) ON DELETE CASCADE';
         }
-
-        await db.execute('CREATE TABLE IF NOT EXISTS $tableName($columns)');
-        print('✅ Table $tableName created.');
-        status?.call(true, tableName);
-      } else {
-        // Table exists → check columns for type changes or missing columns
-        final existingColumns = await db.rawQuery(
-          'PRAGMA table_info($tableName)',
+        await db.execute('CREATE TABLE $tableName($columns)');
+        print(
+          '✅ Table $tableName created with fields: ${fields.keys.join(', ')}',
         );
-        final existingMap = {
-          for (var c in existingColumns)
-            c['name'] as String: c['type'] as String,
-        };
+        status?.call(true, tableName);
+        return;
+      }
 
-        bool needsMigration = false;
-        final newColumns = <String, String>{};
+      // Table exists → check for missing columns
+      final existingColumnsQuery = await db.rawQuery(
+        'PRAGMA table_info($tableName)',
+      );
+      final existingMap = {
+        for (var c in existingColumnsQuery)
+          c['name'] as String: c['type'] as String,
+      };
 
-        // Check each field
-        for (var entry in fields.entries) {
-          final colName = entry.key;
-          final colType = entry.value;
+      // Check if table is empty
+      final rowCountQuery = await db.rawQuery(
+        'SELECT COUNT(*) as cnt FROM $tableName',
+      );
+      final cntValue = rowCountQuery.first['cnt'];
+      final isEmptyTable =
+          cntValue == null || int.parse(cntValue.toString()) == 0;
+      var isFieldNew = false;
 
-          if (!existingMap.containsKey(colName)) {
-            // Column does not exist → add later
+      for (var entry in fields.entries) {
+        final colName = entry.key;
+        final colType = entry.value.sqlType.toUpperCase();
+
+        if (!existingMap.containsKey(colName)) {
+          if (isEmptyTable) {
+            // Table empty → can recreate if needed
+            print('Table is empty, will be recreated later if necessary');
+            isFieldNew = true;
+          } else {
+            // Table has data → add nullable column safely
+            String safeType = colType
+                .replaceAll('PRIMARY KEY', '')
+                .replaceAll('AUTOINCREMENT', '')
+                .replaceAll('NOT NULL', '')
+                .trim();
+            if (!safeType.contains('DEFAULT')) {
+              // Add default null explicitly
+              safeType += ' DEFAULT NULL';
+            }
             await db.execute(
-              'ALTER TABLE $tableName ADD COLUMN $colName $colType',
+              'ALTER TABLE $tableName ADD COLUMN $colName $safeType',
             );
-            print('🆕 Column $colName added to $tableName');
-          } else if (existingMap[colName]?.toUpperCase() !=
-              colType.sqlType.toUpperCase()) {
-            // Column exists but type differs → needs migration
-            needsMigration = true;
+            print('🆕 Column $colName added safely to $tableName');
           }
-
-          newColumns[colName] = colType.sqlType;
-        }
-
-        if (needsMigration) {
-          // Migrate table with new types
-          final tempTable = '${tableName}_temp';
-
-          // Build column definitions for temp table
-          String colDefs = hasIdField
-              ? ''
-              : 'id INTEGER PRIMARY KEY AUTOINCREMENT';
-          newColumns.forEach((name, type) {
-            if (name.toLowerCase() == 'id' && !hasIdField) return;
-            colDefs += colDefs.isEmpty ? '$name $type' : ', $name $type';
-          });
-
-          if (foreignKey != null && referenceTable != null) {
-            colDefs +=
-                ', FOREIGN KEY($foreignKey) REFERENCES $referenceTable(id) ON DELETE CASCADE';
-          }
-
-          await db.transaction((txn) async {
-            await txn.execute('CREATE TABLE $tempTable($colDefs)');
-
-            // Copy existing data with type casting
-            final castedColumns = newColumns.entries
-                .map((e) {
-                  final name = e.key;
-                  final type = e.value.toUpperCase();
-                  if (type.contains('INT')) {
-                    return 'CAST($name AS INTEGER) AS $name';
-                  }
-                  if (type.contains('REAL') ||
-                      type.contains('DOUBLE') ||
-                      type.contains('FLOAT')) {
-                    return 'CAST($name AS REAL) AS $name';
-                  }
-                  if (type.contains('TEXT')) {
-                    return 'CAST($name AS TEXT) AS $name';
-                  }
-                  if (type.contains('BLOB')) {
-                    return 'CAST($name AS BLOB) AS $name';
-                  }
-                  return name; // fallback, no cast
-                })
-                .join(', ');
-
-            await txn.execute(
-              'INSERT INTO $tempTable(${newColumns.keys.join(', ')}) '
-              'SELECT $castedColumns FROM $tableName',
-            );
-
-            await txn.execute('DROP TABLE $tableName');
-            await txn.execute('ALTER TABLE $tempTable RENAME TO $tableName');
-          });
-          status?.call(true, tableName);
-          print('🔄 Table $tableName migrated to updated column types.');
         }
       }
-    } catch (error) {
-      status?.call(false, error.toString());
+
+      // Optionally, migrate empty table
+      if (isFieldNew) {
+        print('Table is empty → safe to drop and recreate with all columns');
+        String columns = hasIdField
+            ? ''
+            : 'id INTEGER PRIMARY KEY AUTOINCREMENT';
+        fields.forEach((name, type) {
+          if (name.toLowerCase() == 'id' && !hasIdField) return;
+          columns += columns.isEmpty
+              ? '$name ${type.sqlType}'
+              : ', $name ${type.sqlType}';
+        });
+        if (foreignKey != null && referenceTable != null) {
+          columns +=
+              ', FOREIGN KEY($foreignKey) REFERENCES $referenceTable(id) ON DELETE CASCADE';
+        }
+        await db.execute('DROP TABLE $tableName');
+        await db.execute('CREATE TABLE $tableName($columns)');
+        print(
+          '✅ Table $tableName recreated with all columns: ${fields.keys.join(', ')}',
+        );
+      }
+
+      status?.call(true, tableName);
+    } catch (e) {
+      print('❌ Failed to create/update table $tableName: $e');
+      status?.call(false, tableName);
     }
-    // Initialize reactive controller for table
+
+    // Initialize reactive controller
     _singleTableControllers.putIfAbsent(
       tableName,
       () => StreamController<void>.broadcast(),

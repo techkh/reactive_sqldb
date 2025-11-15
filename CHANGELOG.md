@@ -9,3 +9,6 @@
 
 ## 1.0.2
 - Add new data type.
+
+## 1.0.3
+- Alter new field.

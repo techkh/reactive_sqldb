@@ -1,6 +1,6 @@
 name: reactive_sqldb
 description: "reactive_sqldb is a powerful SQLite manager"
-version: 1.0.2
+version: 1.0.3
 homepage: https://github.com/techkh/reactive_sqldb
 
 environment:

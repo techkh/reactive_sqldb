@@ -58,7 +58,7 @@ class _MyAppState extends State<MyApp> {
     });
 
     //Delete by id
-    await _reactiveSqldbPlugin.delete("user", 2);
+    await _reactiveSqldbPlugin.delete("user", id: 2);
 
     await _reactiveSqldbPlugin.updateQuery(
       'user',

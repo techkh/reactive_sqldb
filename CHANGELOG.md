@@ -12,3 +12,6 @@
 
 ## 1.0.3
 - Alter new field.
+
+## 1.0.4 
+- Update delete function.

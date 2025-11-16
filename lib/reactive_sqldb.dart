@@ -231,9 +231,27 @@ class ReactiveSqldb {
   }
 
   /// Delete record by id
-  Future<int> delete(String table, int id) async {
+  // Future<int> delete(String table, int id) async {
+  //   final db = await getDatabase();
+  //   final status = await db.delete(table, where: 'id = ?', whereArgs: [id]);
+  //   notifyTable(table);
+  //   return status;
+  // }
+
+  /// Delete All and By ID
+  Future<int> delete(String table, {int? id}) async {
     final db = await getDatabase();
-    final status = await db.delete(table, where: 'id = ?', whereArgs: [id]);
+
+    int status;
+
+    if (id == null) {
+      // delete all rows
+      status = await db.delete(table);
+    } else {
+      // delete specific row
+      status = await db.delete(table, where: 'id = ?', whereArgs: [id]);
+    }
+
     notifyTable(table);
     return status;
   }

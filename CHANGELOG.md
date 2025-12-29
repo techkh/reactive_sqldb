@@ -18,3 +18,6 @@
 
 ## 1.0.5
 - Allow add default value each fields.
+
+## 1.0.6
+- Allow user !=, >=, < other for where condictions.

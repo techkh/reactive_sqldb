@@ -220,21 +220,52 @@ class ReactiveSqldb {
   // }
 
   /// Delete All and By ID
-  Future<int> delete(String table, {int? id}) async {
+  Future<int> delete(
+    String table, {
+    int? id,
+    Map<String, dynamic>? whereArgs, // value or [operator, value]
+  }) async {
     final db = await getDatabase();
 
-    int status;
+    try {
+      int status;
 
-    if (id == null) {
-      // delete all rows
-      status = await db.delete(table);
-    } else {
-      // delete specific row
-      status = await db.delete(table, where: 'id = ?', whereArgs: [id]);
+      if (id != null) {
+        // delete by id
+        status = await db.delete(table, where: 'id = ?', whereArgs: [id]);
+      } else if (whereArgs != null && whereArgs.isNotEmpty) {
+        // build dynamic where clause
+        final whereParts = <String>[];
+        final args = <Object?>[];
+
+        whereArgs.forEach((key, value) {
+          if (value is List && value.length == 2) {
+            final op = value[0];
+            final val = value[1];
+            whereParts.add('$key $op ?');
+            args.add(val);
+          } else {
+            whereParts.add('$key = ?');
+            args.add(value);
+          }
+        });
+
+        final whereClause = whereParts.join(' AND ');
+
+        status = await db.delete(table, where: whereClause, whereArgs: args);
+      } else {
+        // delete all rows
+        status = await db.delete(table);
+      }
+
+      // Notify reactive controller
+      notifyTable(table);
+      return status;
+    } catch (e, stack) {
+      print('❌ Database delete error on table "$table": $e');
+      print(stack);
+      return 0;
     }
-
-    notifyTable(table);
-    return status;
   }
 
   Future<int> updateQuery(
@@ -262,7 +293,8 @@ class ReactiveSqldb {
   /// Get all records
   Future<List<Map<String, Object?>>> getAll(
     String table,
-    Map<String, Object?>? whereArgs, {
+    Map<String, dynamic>?
+    whereArgs, { // value can be Object or [operator, value]
     int? limit,
     int? offset = 0,
   }) async {
@@ -271,12 +303,28 @@ class ReactiveSqldb {
     try {
       if (whereArgs == null || whereArgs.isEmpty) {
         // No filters → return all rows
-        return await db.query(table, offset: offset, limit: limit);
+        return await db.query(table, offset: offset ?? 0, limit: limit);
       }
 
       // Build WHERE clause dynamically
-      final whereClause = whereArgs.keys.map((k) => '$k = ?').join(' AND ');
-      final args = whereArgs.values.toList();
+      final whereParts = <String>[];
+      final args = <Object?>[];
+
+      whereArgs.forEach((key, value) {
+        if (value is List && value.length == 2) {
+          // e.g., ['!=', 0]
+          final op = value[0];
+          final val = value[1];
+          whereParts.add('$key $op ?');
+          args.add(val);
+        } else {
+          // default '='
+          whereParts.add('$key = ?');
+          args.add(value);
+        }
+      });
+
+      final whereClause = whereParts.join(' AND ');
 
       return await db.query(
         table,
@@ -285,8 +333,9 @@ class ReactiveSqldb {
         offset: offset ?? 0,
         limit: limit,
       );
-    } catch (e) {
-      print('Database getAll error: $e');
+    } catch (e, stack) {
+      print('❌ Database getAll error on table "$table": $e');
+      print(stack);
       return [];
     }
   }
@@ -295,7 +344,7 @@ class ReactiveSqldb {
   /// Example: get('users', {'id': 1})
   Future<Map<String, Object?>?> get(
     String table,
-    Map<String, Object?> whereArgs,
+    Map<String, dynamic> whereArgs, // value can be Object or [operator, value]
   ) async {
     final db = await getDatabase();
 
@@ -305,8 +354,25 @@ class ReactiveSqldb {
         return rows.isNotEmpty ? rows.first : null;
       }
 
-      final whereClause = whereArgs.keys.map((k) => '$k = ?').join(' AND ');
-      final args = whereArgs.values.toList();
+      // Build WHERE clause dynamically
+      final whereParts = <String>[];
+      final args = <Object?>[];
+
+      whereArgs.forEach((key, value) {
+        if (value is List && value.length == 2) {
+          // e.g., ['!=', 0]
+          final op = value[0];
+          final val = value[1];
+          whereParts.add('$key $op ?');
+          args.add(val);
+        } else {
+          // default '='
+          whereParts.add('$key = ?');
+          args.add(value);
+        }
+      });
+
+      final whereClause = whereParts.join(' AND ');
 
       final rows = await db.query(
         table,
@@ -316,8 +382,9 @@ class ReactiveSqldb {
       );
 
       return rows.isNotEmpty ? rows.first : null;
-    } catch (e) {
-      print('Database get error: $e');
+    } catch (e, stack) {
+      print('❌ Database get error on table "$table": $e');
+      print(stack);
       return null;
     }
   }

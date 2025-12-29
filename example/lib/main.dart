@@ -74,6 +74,11 @@ class _MyAppState extends State<MyApp> {
       offset: 0,
       limit: 20,
     );
+
+    final rows = await _reactiveSqldbPlugin.getAll('user', {
+      'deleted_at': ['!=', null],
+    });
+
     //Query All
     var userAllQuery = await _reactiveSqldbPlugin.query(
       "user",
@@ -85,6 +90,15 @@ class _MyAppState extends State<MyApp> {
 
     ///Get one item
     var user = await _reactiveSqldbPlugin.get("user", {"id": 2});
+
+    final row = await _reactiveSqldbPlugin.get('user', {
+      'deleted_at': ['!=', null],
+    });
+    final one = await _reactiveSqldbPlugin.get('transactions', {
+      'type': ['=', 'expense'],
+      'amount': ['>=', 100],
+      'deleted_at': ['=', null],
+    });
 
     ///State Change
     setState(() {

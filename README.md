@@ -32,7 +32,7 @@ Make sure to check out [examples](https://github.com/techkh/reactive_sqldb/tree/
 Add the following line to `pubspec.yaml`:
 ```yaml
     dependencies:
-        reactive_sqldb: ^1.0.5
+        reactive_sqldb: ^1.0.6
 ```
 
 ```yaml

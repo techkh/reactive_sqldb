@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
+import 'column_def.dart';
 import 'fields.dart';
 
 class ReactiveSqldb {
@@ -52,14 +53,16 @@ class ReactiveSqldb {
   /// Create table dynamically with fields
   /// fields = {'name': 'TEXT', 'age': 'INTEGER'}
   /// optional foreignKey: 'userId', referenceTable: 'users'
+  /// remove  required Map<String, FieldType> fields,
   Future<void> createTable(
     String tableName, {
-    required Map<String, FieldType> fields,
+    required Map<String, ColumnDef> fields,
     String? foreignKey,
     String? referenceTable,
     Function(bool status, String tableName)? status,
   }) async {
     final db = await getDatabase();
+
     try {
       final tables = await db.rawQuery(
         "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
@@ -67,98 +70,77 @@ class ReactiveSqldb {
       );
       final tableExists = tables.isNotEmpty;
 
-      final hasIdField = fields.keys.any((k) => k.toLowerCase() == 'id');
+      final hasPrimary = fields.values.any((e) => e.type == FieldType.PRIMARY);
 
+      // ───────────────────────── CREATE TABLE
       if (!tableExists) {
-        // Table doesn't exist → create
-        String columns = hasIdField
-            ? ''
-            : 'id INTEGER PRIMARY KEY AUTOINCREMENT';
-        fields.forEach((name, type) {
-          if (name.toLowerCase() == 'id' && !hasIdField) return;
+        String columns = '';
+
+        fields.forEach((name, def) {
           columns += columns.isEmpty
-              ? '$name ${type.sqlType}'
-              : ', $name ${type.sqlType}';
+              ? '$name ${def.toSql()}'
+              : ', $name ${def.toSql()}';
         });
+
+        if (!hasPrimary) {
+          columns = 'id INTEGER PRIMARY KEY AUTOINCREMENT, $columns';
+        }
+
         if (foreignKey != null && referenceTable != null) {
           columns +=
               ', FOREIGN KEY($foreignKey) REFERENCES $referenceTable(id) ON DELETE CASCADE';
         }
-        await db.execute('CREATE TABLE $tableName($columns)');
-        print(
-          '✅ Table $tableName created with fields: ${fields.keys.join(', ')}',
-        );
+
+        await db.execute('CREATE TABLE $tableName ($columns)');
         status?.call(true, tableName);
         return;
       }
 
-      // Table exists → check for missing columns
-      final existingColumnsQuery = await db.rawQuery(
-        'PRAGMA table_info($tableName)',
-      );
-      final existingMap = {
-        for (var c in existingColumnsQuery)
-          c['name'] as String: c['type'] as String,
-      };
+      // ───────────────────────── CHECK EXISTING COLUMNS
+      final existing = await db.rawQuery('PRAGMA table_info($tableName)');
+      final existingCols = {for (var c in existing) c['name'] as String};
 
-      // Check if table is empty
-      final rowCountQuery = await db.rawQuery(
+      final rowCount = await db.rawQuery(
         'SELECT COUNT(*) as cnt FROM $tableName',
       );
-      final cntValue = rowCountQuery.first['cnt'];
-      final isEmptyTable =
-          cntValue == null || int.parse(cntValue.toString()) == 0;
-      var isFieldNew = false;
+      final isEmpty = int.parse(rowCount.first['cnt'].toString()) == 0;
+
+      bool recreate = false;
 
       for (var entry in fields.entries) {
-        final colName = entry.key;
-        final colType = entry.value.sqlType.toUpperCase();
-
-        if (!existingMap.containsKey(colName)) {
-          if (isEmptyTable) {
-            // Table empty → can recreate if needed
-            print('Table is empty, will be recreated later if necessary');
-            isFieldNew = true;
+        if (!existingCols.contains(entry.key)) {
+          if (isEmpty) {
+            recreate = true;
           } else {
-            // Table has data → add nullable column safely
-            String safeType = colType
-                .replaceAll('PRIMARY KEY', '')
-                .replaceAll('AUTOINCREMENT', '')
-                .replaceAll('NOT NULL', '')
-                .trim();
-            if (!safeType.contains('DEFAULT')) {
-              // Add default null explicitly
-              safeType += ' DEFAULT NULL';
-            }
             await db.execute(
-              'ALTER TABLE $tableName ADD COLUMN $colName $safeType',
+              'ALTER TABLE $tableName ADD COLUMN '
+              '${entry.key} ${entry.value.toSql(forAlter: true)}',
             );
-            print('🆕 Column $colName added safely to $tableName');
           }
         }
       }
 
-      // Optionally, migrate empty table
-      if (isFieldNew) {
-        print('Table is empty → safe to drop and recreate with all columns');
-        String columns = hasIdField
-            ? ''
-            : 'id INTEGER PRIMARY KEY AUTOINCREMENT';
-        fields.forEach((name, type) {
-          if (name.toLowerCase() == 'id' && !hasIdField) return;
+      // ───────────────────────── RECREATE IF EMPTY
+      if (recreate) {
+        String columns = '';
+
+        fields.forEach((name, def) {
           columns += columns.isEmpty
-              ? '$name ${type.sqlType}'
-              : ', $name ${type.sqlType}';
+              ? '$name ${def.toSql()}'
+              : ', $name ${def.toSql()}';
         });
+
+        if (!hasPrimary) {
+          columns = 'id INTEGER PRIMARY KEY AUTOINCREMENT, $columns';
+        }
+
         if (foreignKey != null && referenceTable != null) {
           columns +=
               ', FOREIGN KEY($foreignKey) REFERENCES $referenceTable(id) ON DELETE CASCADE';
         }
+
         await db.execute('DROP TABLE $tableName');
-        await db.execute('CREATE TABLE $tableName($columns)');
-        print(
-          '✅ Table $tableName recreated with all columns: ${fields.keys.join(', ')}',
-        );
+        await db.execute('CREATE TABLE $tableName ($columns)');
       }
 
       status?.call(true, tableName);
@@ -167,7 +149,6 @@ class ReactiveSqldb {
       status?.call(false, tableName);
     }
 
-    // Initialize reactive controller
     _singleTableControllers.putIfAbsent(
       tableName,
       () => StreamController<void>.broadcast(),

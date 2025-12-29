@@ -10,8 +10,11 @@
 ## 1.0.2
 - Add new data type.
 
-## 1.0.3
+## 1.0.3s
 - Alter new field.
 
 ## 1.0.4 
 - Update delete function.
+
+## 1.0.5
+- Allow add default value each fields.

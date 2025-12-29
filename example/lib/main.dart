@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:reactive_sqldb/column_def.dart';
 import 'dart:async';
 
 import 'package:reactive_sqldb/fields.dart';
@@ -30,17 +31,17 @@ class _MyAppState extends State<MyApp> {
   Future<void> creteTables() async {
     ///Create Tables
     await _reactiveSqldbPlugin.createTable(
-      "user",
+      "users",
       fields: {
-        "name": FieldType.TEXT,
-        "email": FieldType.TEXT,
-        "gennder": FieldType.TEXT,
+        "name": ColumnDef(type: FieldType.TEXT, defaultValue: 'asfd'),
+        "email": ColumnDef(type: FieldType.TEXT, defaultValue: 'sdfasf'),
+        "gennder": ColumnDef(type: FieldType.TEXT),
       },
       status: (status, tableName) {},
     );
 
     ///Listen Tables
-    _reactiveSqldbPlugin.watchTable("user").listen((rows) {
+    _reactiveSqldbPlugin.watchTable("users").listen((rows) {
       print('Rows: $rows');
     });
 

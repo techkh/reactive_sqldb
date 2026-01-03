@@ -26,3 +26,7 @@
 - Encryption database protected data
 - This version we auto migrate your data
 - Noted: This version we not resposible to lost data first migrate. 
+
+## 1.0.8
+- Get all tables (name , Columns)
+- Can create table without auth increment

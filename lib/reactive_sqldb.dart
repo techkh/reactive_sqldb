@@ -163,15 +163,21 @@ class ReactiveSqldb {
         String columns = '';
 
         fields.forEach((name, def) {
-          columns += columns.isEmpty
-              ? '$name ${def.toSql()}'
-              : ', $name ${def.toSql()}';
+          String sql = def.toSql();
+          // If PRIMARY key with autoIncrement is false, remove AUTOINCREMENT
+          if (def.type == FieldType.PRIMARY && !def.autoIncrement) {
+            sql = 'INTEGER PRIMARY KEY';
+          }
+          columns += columns.isEmpty ? '$name $sql' : ', $name $sql';
         });
 
+        // Add default 'id' primary key only if no primary key exists
         if (!hasPrimary) {
-          columns = 'id INTEGER PRIMARY KEY AUTOINCREMENT, $columns';
+          columns =
+              'id INTEGER PRIMARY KEY AUTOINCREMENT ${columns.isNotEmpty ? ', $columns' : ''}';
         }
 
+        // Foreign key support
         if (foreignKey != null && referenceTable != null) {
           columns +=
               ', FOREIGN KEY($foreignKey) REFERENCES $referenceTable(id) ON DELETE CASCADE';
@@ -211,13 +217,16 @@ class ReactiveSqldb {
         String columns = '';
 
         fields.forEach((name, def) {
-          columns += columns.isEmpty
-              ? '$name ${def.toSql()}'
-              : ', $name ${def.toSql()}';
+          String sql = def.toSql();
+          if (def.type == FieldType.PRIMARY && !def.autoIncrement) {
+            sql = 'INTEGER PRIMARY KEY';
+          }
+          columns += columns.isEmpty ? '$name $sql' : ', $name $sql';
         });
 
         if (!hasPrimary) {
-          columns = 'id INTEGER PRIMARY KEY AUTOINCREMENT, $columns';
+          columns =
+              'id INTEGER PRIMARY KEY AUTOINCREMENT ${columns.isNotEmpty ? ', $columns' : ''}';
         }
 
         if (foreignKey != null && referenceTable != null) {
@@ -554,5 +563,38 @@ class ReactiveSqldb {
     }
 
     return count;
+  }
+
+  /// Returns a map of all user-defined tables with their columns
+  /// Example output:
+  /// {
+  ///   "user": ["id", "name", "email"],
+  ///   "orders": ["id", "userId", "amount", "createdAt"]
+  /// }
+  Future<Map<String, List<String>>> listTablesWithFields() async {
+    final db = await getDatabase();
+    final result = <String, List<String>>{};
+
+    try {
+      // Get all user-defined tables
+      final tablesQuery = await db.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
+      );
+
+      for (final tableRow in tablesQuery) {
+        final tableName = tableRow['name'] as String;
+
+        // Get columns for this table
+        final columnsQuery = await db.rawQuery('PRAGMA table_info($tableName)');
+        final columns = columnsQuery.map((c) => c['name'] as String).toList();
+
+        result[tableName] = columns;
+      }
+    } catch (e, st) {
+      print('❌ Failed to list tables with fields: $e');
+      print(st);
+    }
+
+    return result;
   }
 }

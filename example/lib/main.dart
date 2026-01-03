@@ -25,10 +25,60 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
     creteTables();
+    listTabales();
   }
 
   // Platform messages are asynchronous, so we initialize in an async method.
   Future<void> creteTables() async {
+    // Define your table schema
+    //Apply without auto increment
+
+    final userFields = {
+      'userId': ColumnDef(
+        type: FieldType.PRIMARY,
+        autoIncrement: false, // <-- Primary key without auto-increment
+      ),
+      'name': ColumnDef(type: FieldType.TEXT, notNull: true),
+      'email': ColumnDef(type: FieldType.TEXT),
+      'age': ColumnDef(type: FieldType.INTEGER, defaultValue: 18),
+    };
+
+    // Create the table
+    await _reactiveSqldbPlugin.createTable(
+      'testing',
+      fields: userFields,
+      status: (success, tableName) {
+        if (success) {
+          print('Table $tableName created successfully!');
+        } else {
+          print('Failed to create table $tableName');
+        }
+      },
+    );
+
+    final test2 = {
+      'userId': ColumnDef(
+        type: FieldType.PRIMARY,
+        autoIncrement: true, // <-- Primary key without auto-increment
+      ),
+      'name': ColumnDef(type: FieldType.TEXT, notNull: true),
+      'email': ColumnDef(type: FieldType.TEXT),
+      'age': ColumnDef(type: FieldType.INTEGER, defaultValue: 18),
+    };
+
+    // Create the table
+    await _reactiveSqldbPlugin.createTable(
+      'testing2',
+      fields: test2,
+      status: (success, tableName) {
+        if (success) {
+          print('Table $tableName created successfully!');
+        } else {
+          print('Failed to create table $tableName');
+        }
+      },
+    );
+
     ///Create Tables
     await _reactiveSqldbPlugin.createTable(
       "user",
@@ -101,6 +151,14 @@ class _MyAppState extends State<MyApp> {
     });
 
     print("User get: $user");
+  }
+
+  Future listTabales() async {
+    final tablesWithFields = await _reactiveSqldbPlugin.listTablesWithFields();
+
+    tablesWithFields.forEach((table, columns) {
+      print('Table: $table, Columns: $columns');
+    });
   }
 
   @override

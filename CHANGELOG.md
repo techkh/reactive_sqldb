@@ -24,3 +24,5 @@
 
 ## 1.0.7
 - Encryption database protected data
+- This version we auto migrate your data
+- Noted: This version we not resposible to lost data first migrate. 

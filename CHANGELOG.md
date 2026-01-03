@@ -30,3 +30,6 @@
 ## 1.0.8
 - Get all tables (name , Columns)
 - Can create table without auth increment
+
+## 1.0.9
+- Add fun drop database file.

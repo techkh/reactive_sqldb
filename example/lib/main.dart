@@ -19,7 +19,7 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   String _name = 'Unknown';
 
-  final _reactiveSqldbPlugin = ReactiveSqldb(name: "mytesting.db");
+  var _reactiveSqldbPlugin = ReactiveSqldb(name: "mytesting.db");
 
   @override
   void initState() {
@@ -166,7 +166,44 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(title: const Text('Plugin example app')),
-        body: Center(child: Text('Running on: $_name\n')),
+        body: Column(
+          children: [
+            InkWell(
+              onTap: () async {
+                await _reactiveSqldbPlugin.dropDatabaseFile();
+              },
+              child: Text("Drop Database"),
+            ),
+            InkWell(
+              onTap: () async {
+                final userFields = {
+                  'userId': ColumnDef(
+                    type: FieldType.PRIMARY,
+                    autoIncrement:
+                        false, // <-- Primary key without auto-increment
+                  ),
+                  'name': ColumnDef(type: FieldType.TEXT, notNull: true),
+                  'email': ColumnDef(type: FieldType.TEXT),
+                  'age': ColumnDef(type: FieldType.INTEGER, defaultValue: 18),
+                };
+
+                // Create the table
+                await _reactiveSqldbPlugin.createTable(
+                  'testing',
+                  fields: userFields,
+                  status: (success, tableName) {
+                    if (success) {
+                      print('Table $tableName created successfully!');
+                    } else {
+                      print('Failed to create table $tableName');
+                    }
+                  },
+                );
+              },
+              child: Text("Create Database"),
+            ),
+          ],
+        ),
       ),
     );
   }

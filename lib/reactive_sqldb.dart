@@ -250,6 +250,54 @@ class ReactiveSqldb {
     );
   }
 
+  /// Deletes the entire database file
+  /// Use with caution: all tables and data will be lost
+  Future<void> dropDatabaseFile() async {
+    try {
+      // Close the database if it's open
+      if (_database != null && _database!.isOpen) {
+        await _database!.close();
+        _database = null;
+      }
+
+      // Get database path
+      final dbPath = await getDatabasesPath();
+      final path = join(dbPath, name);
+
+      final encryptionKey = await DbKeyManager.getKey();
+
+      // Optional: copy prebuilt database from assets if it doesn't exist
+      if (!File(path).existsSync()) {
+        try {
+          final data = await rootBundle.load('assets/$name');
+          final bytes = data.buffer.asUint8List();
+          await File(path).writeAsBytes(bytes);
+          print('Prebuilt database copied to container: $path');
+        } catch (e) {
+          print('No prebuilt DB found, will create new: $e');
+        }
+      }
+
+      // Delete file if exists
+      final file = File(path);
+      if (file.existsSync()) {
+        await file.delete();
+        print('🗑 Database file "$name" deleted successfully');
+      } else {
+        print('⚠️ Database file "$name" does not exist');
+      }
+
+      // Clear reactive controllers
+      _singleTableControllers.forEach((key, ctrl) => ctrl.close());
+      _tableControllers.forEach((key, ctrl) => ctrl.close());
+      _singleTableControllers.clear();
+      _tableControllers.clear();
+    } catch (e, st) {
+      print('❌ Failed to delete database file "$name": $e');
+      print(st);
+    }
+  }
+
   /// Stream for reactive updates (void)
   Stream<void> tableStream(String tableName) {
     return _singleTableControllers

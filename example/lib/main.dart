@@ -31,7 +31,7 @@ class _MyAppState extends State<MyApp> {
   Future<void> creteTables() async {
     ///Create Tables
     await _reactiveSqldbPlugin.createTable(
-      "users",
+      "user",
       fields: {
         "name": ColumnDef(type: FieldType.TEXT, defaultValue: 'asfd'),
         "email": ColumnDef(type: FieldType.TEXT, defaultValue: 'sdfasf'),
@@ -41,7 +41,7 @@ class _MyAppState extends State<MyApp> {
     );
 
     ///Listen Tables
-    _reactiveSqldbPlugin.watchTable("users").listen((rows) {
+    _reactiveSqldbPlugin.watchTable("user").listen((rows) {
       print('Rows: $rows');
     });
 
@@ -59,7 +59,7 @@ class _MyAppState extends State<MyApp> {
     });
 
     //Delete by id
-    await _reactiveSqldbPlugin.delete("user", id: 2);
+    //await _reactiveSqldbPlugin.delete("user", id: 2);
 
     await _reactiveSqldbPlugin.updateQuery(
       'user',
@@ -75,9 +75,9 @@ class _MyAppState extends State<MyApp> {
       limit: 20,
     );
 
-    final rows = await _reactiveSqldbPlugin.getAll('user', {
-      'deleted_at': ['!=', null],
-    });
+    // final rows = await _reactiveSqldbPlugin.getAll('user', {
+    //   'deleted_at': ['!=', null],
+    // });
 
     //Query All
     var userAllQuery = await _reactiveSqldbPlugin.query(
@@ -91,14 +91,9 @@ class _MyAppState extends State<MyApp> {
     ///Get one item
     var user = await _reactiveSqldbPlugin.get("user", {"id": 2});
 
-    final row = await _reactiveSqldbPlugin.get('user', {
-      'deleted_at': ['!=', null],
-    });
-    final one = await _reactiveSqldbPlugin.get('transactions', {
-      'type': ['=', 'expense'],
-      'amount': ['>=', 100],
-      'deleted_at': ['=', null],
-    });
+    // final row = await _reactiveSqldbPlugin.get('user', {
+    //   'deleted_at': ['!=', null],
+    // });
 
     ///State Change
     setState(() {

@@ -21,3 +21,6 @@
 
 ## 1.0.6
 - Allow user !=, >=, < other for where condictions.
+
+## 1.0.7
+- Encryption database protected data

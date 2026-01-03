@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/services.dart';
-import 'package:sqflite/sqflite.dart';
+
 import 'package:path/path.dart';
+import 'package:reactive_sqldb/db_helper_manager.dart';
+import 'package:sqflite_sqlcipher/sqflite.dart';
 
 import 'column_def.dart';
 import 'fields.dart';
@@ -10,6 +12,7 @@ import 'fields.dart';
 class ReactiveSqldb {
   Database? _database;
   String name = "mydatabase.db";
+  final Map<String, Map<String, ColumnDef>> schema = {}; // store table schemas
   // Reactive table controllers
   final Map<String, StreamController<List<Map<String, dynamic>>>>
   _tableControllers = {};
@@ -24,6 +27,8 @@ class ReactiveSqldb {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, name);
 
+    final encryptionKey = await DbKeyManager.getKey();
+
     // Optional: copy prebuilt database from assets if it doesn't exist
     if (!File(path).existsSync()) {
       try {
@@ -36,18 +41,99 @@ class ReactiveSqldb {
       }
     }
 
+    await migrateIfNeeded(path: path, encryptionKey: encryptionKey);
+
     // Open or create the database
     _database = await openDatabase(
       path,
+      password: encryptionKey, // 🔐 SQLCipher magic
       version: 1,
       onCreate: (db, version) async {
-        print('Database created at $path');
-        // Create initial tables if needed, e.g.:
-        // await db.execute('CREATE TABLE users(id INTEGER PRIMARY KEY, name TEXT)');
+        print('🔐 Encrypted database created at $path');
       },
     );
 
     return _database!;
+  }
+
+  /// Fully automatic migration
+  Future<void> migrateIfNeeded({
+    required String path,
+    required String encryptionKey,
+  }) async {
+    bool alreadyEncrypted = false;
+
+    // Try opening DB with encryption key
+    try {
+      final testDb = await openDatabase(path, password: encryptionKey);
+      await testDb.close();
+      alreadyEncrypted = true;
+      print('🔐 Encrypted DB detected → migration skipped');
+    } catch (_) {
+      print('🔁 Plain DB detected → migrating all tables');
+    }
+
+    if (alreadyEncrypted) return;
+
+    // Open plain DB
+    final plainDb = await openDatabase(path);
+
+    // Create temp encrypted DB
+    final tempPath = path + '_encrypted';
+    final encryptedDb = await openDatabase(
+      tempPath,
+      password: encryptionKey,
+      version: 1,
+    );
+
+    // Attach plain DB inside encrypted DB
+    await encryptedDb.execute("ATTACH DATABASE '$path' AS plaintext KEY ''");
+
+    // Get all user tables from plain DB
+    final tables = await encryptedDb.rawQuery(
+      "SELECT name FROM plaintext.sqlite_master "
+      "WHERE type='table' AND name NOT LIKE 'sqlite_%'",
+    );
+
+    for (final row in tables) {
+      final tableName = row['name'] as String;
+
+      // Create table schema in encrypted DB based on schema registry
+      final fields = schema[tableName];
+      if (fields == null) continue;
+
+      final hasPrimary = fields.values.any((e) => e.type == FieldType.PRIMARY);
+      String columns = '';
+      fields.forEach((name, def) {
+        columns += columns.isEmpty
+            ? '$name ${def.toSql()}'
+            : ', $name ${def.toSql()}';
+      });
+      if (!hasPrimary) {
+        columns = 'id INTEGER PRIMARY KEY AUTOINCREMENT, $columns';
+      }
+
+      await encryptedDb.execute(
+        'CREATE TABLE IF NOT EXISTS $tableName ($columns)',
+      );
+
+      // Copy data directly inside SQL without loading in Dart
+      await encryptedDb.execute(
+        'INSERT INTO main.$tableName SELECT * FROM plaintext.$tableName',
+      );
+    }
+
+    // Detach plain DB
+    await encryptedDb.execute('DETACH DATABASE plaintext');
+    await encryptedDb.close();
+    await plainDb.close();
+
+    // Replace old DB file with encrypted DB
+    final encryptedFile = File(tempPath);
+    if (File(path).existsSync()) await File(path).delete();
+    await encryptedFile.rename(path);
+
+    print('✅ Migration of all tables completed with SQLCipher');
   }
 
   /// Create table dynamically with fields

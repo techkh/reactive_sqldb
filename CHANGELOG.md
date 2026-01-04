@@ -33,3 +33,6 @@
 
 ## 1.0.9
 - Add fun drop database file.
+
+## 1.0.10
+- Fixed bug

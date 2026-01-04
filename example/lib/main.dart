@@ -95,11 +95,17 @@ class _MyAppState extends State<MyApp> {
       print('Rows: $rows');
     });
 
+    var s = await _reactiveSqldbPlugin.get('user', {
+      "name": "DarithKuch",
+      "gennder": null,
+    });
+    print(s);
+
     ///Insert Data
     await _reactiveSqldbPlugin.insert("user", {
-      "name": "David",
+      "name": "DarithKuch",
       "email": "david@gmail.com",
-      "gennder": "Male",
+      "gennder": null,
     });
 
     ///Update by id Data

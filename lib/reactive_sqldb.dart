@@ -436,8 +436,7 @@ class ReactiveSqldb {
   /// Get all records
   Future<List<Map<String, Object?>>> getAll(
     String table,
-    Map<String, dynamic>?
-    whereArgs, { // value can be Object or [operator, value]
+    Map<String, dynamic>? whereArgs, {
     int? limit,
     int? offset = 0,
   }) async {
@@ -445,34 +444,37 @@ class ReactiveSqldb {
 
     try {
       if (whereArgs == null || whereArgs.isEmpty) {
-        // No filters → return all rows
         return await db.query(table, offset: offset ?? 0, limit: limit);
       }
 
-      // Build WHERE clause dynamically
       final whereParts = <String>[];
       final args = <Object?>[];
 
       whereArgs.forEach((key, value) {
-        if (value is List && value.length == 2) {
-          // e.g., ['!=', 0]
-          final op = value[0];
-          final val = value[1];
-          whereParts.add('$key $op ?');
-          args.add(val);
-        } else {
-          // default '='
+        // ✅ NULL → IS NULL
+        if (value == null) {
+          whereParts.add('$key IS NULL');
+        }
+        // ✅ Operator with NULL → IS / IS NOT
+        else if (value is List && value.length == 2 && value[1] == null) {
+          whereParts.add('$key ${value[0]} NULL');
+        }
+        // ✅ Operator with value
+        else if (value is List && value.length == 2) {
+          whereParts.add('$key ${value[0]} ?');
+          args.add(value[1]);
+        }
+        // ✅ Normal equals
+        else {
           whereParts.add('$key = ?');
           args.add(value);
         }
       });
 
-      final whereClause = whereParts.join(' AND ');
-
       return await db.query(
         table,
-        where: whereClause,
-        whereArgs: args,
+        where: whereParts.join(' AND '),
+        whereArgs: args.isEmpty ? null : args, // 🔥 important
         offset: offset ?? 0,
         limit: limit,
       );
@@ -487,7 +489,7 @@ class ReactiveSqldb {
   /// Example: get('users', {'id': 1})
   Future<Map<String, Object?>?> get(
     String table,
-    Map<String, dynamic> whereArgs, // value can be Object or [operator, value]
+    Map<String, dynamic> whereArgs,
   ) async {
     final db = await getDatabase();
 
@@ -497,30 +499,34 @@ class ReactiveSqldb {
         return rows.isNotEmpty ? rows.first : null;
       }
 
-      // Build WHERE clause dynamically
       final whereParts = <String>[];
       final args = <Object?>[];
 
       whereArgs.forEach((key, value) {
-        if (value is List && value.length == 2) {
-          // e.g., ['!=', 0]
-          final op = value[0];
-          final val = value[1];
-          whereParts.add('$key $op ?');
-          args.add(val);
-        } else {
-          // default '='
+        // ✅ NULL → IS NULL (NO whereArgs)
+        if (value == null) {
+          whereParts.add('$key IS NULL');
+        }
+        // ✅ Operator with NULL (IS / IS NOT)
+        else if (value is List && value.length == 2 && value[1] == null) {
+          whereParts.add('$key ${value[0]} NULL');
+        }
+        // ✅ Operator with value
+        else if (value is List && value.length == 2) {
+          whereParts.add('$key ${value[0]} ?');
+          args.add(value[1]);
+        }
+        // ✅ Normal equals
+        else {
           whereParts.add('$key = ?');
           args.add(value);
         }
       });
 
-      final whereClause = whereParts.join(' AND ');
-
       final rows = await db.query(
         table,
-        where: whereClause,
-        whereArgs: args,
+        where: whereParts.join(' AND '),
+        whereArgs: args.isEmpty ? null : args, // 🔥 IMPORTANT
         limit: 1,
       );
 

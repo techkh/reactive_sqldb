@@ -2,12 +2,14 @@ import 'fields.dart';
 
 class ColumnDef {
   final FieldType type;
+  final String? primaryKeyName;
   final dynamic defaultValue;
   final bool notNull;
   final bool autoIncrement; // controls PRIMARY AUTOINCREMENT
 
   const ColumnDef({
     required this.type,
+    this.primaryKeyName,
     this.defaultValue,
     this.notNull = false,
     this.autoIncrement = true,
@@ -20,10 +22,17 @@ class ColumnDef {
     }
 
     String sql = type.sqlType;
-
-    // Only add AUTOINCREMENT for PRIMARY keys if enabled and not ALTER
     if (type == FieldType.PRIMARY && autoIncrement && !forAlter) {
+      String primaryKeyName = this.primaryKeyName ?? ' INTEGER ';
+      primaryKeyName += " $sql";
+      sql = primaryKeyName;
       sql += ' AUTOINCREMENT ';
+    }
+
+    if (type == FieldType.PRIMARY && !autoIncrement && !forAlter) {
+      String primaryKeyName = this.primaryKeyName ?? ' INTEGER ';
+      primaryKeyName += " $sql";
+      sql = primaryKeyName;
     }
 
     // Only add NOT NULL if it's not a PRIMARY key

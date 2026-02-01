@@ -36,3 +36,6 @@
 
 ## 1.0.10
 - Fixed bug
+
+## 1.0.11
+- Created field primary KEY without auto AUTOINCREMENT. 

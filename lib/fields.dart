@@ -16,7 +16,7 @@ extension FieldTypeExtension on FieldType {
   String get sqlType {
     switch (this) {
       case FieldType.PRIMARY:
-        return 'INTEGER PRIMARY KEY';
+        return 'PRIMARY KEY';
       case FieldType.FLOAT:
       case FieldType.REAL:
         return 'REAL';

@@ -166,7 +166,7 @@ class ReactiveSqldb {
           String sql = def.toSql();
           // If PRIMARY key with autoIncrement is false, remove AUTOINCREMENT
           if (def.type == FieldType.PRIMARY && !def.autoIncrement) {
-            sql = 'INTEGER PRIMARY KEY';
+            //sql = 'INTEGER PRIMARY KEY';
           }
           columns += columns.isEmpty ? '$name $sql' : ', $name $sql';
         });
@@ -219,7 +219,7 @@ class ReactiveSqldb {
         fields.forEach((name, def) {
           String sql = def.toSql();
           if (def.type == FieldType.PRIMARY && !def.autoIncrement) {
-            sql = 'INTEGER PRIMARY KEY';
+            //sql = 'INTEGER PRIMARY KEY';
           }
           columns += columns.isEmpty ? '$name $sql' : ', $name $sql';
         });
@@ -625,27 +625,47 @@ class ReactiveSqldb {
   ///   "user": ["id", "name", "email"],
   ///   "orders": ["id", "userId", "amount", "createdAt"]
   /// }
-  Future<Map<String, List<String>>> listTablesWithFields() async {
+  Future<Map<String, Map<String, Map<String, dynamic>>>>
+  listTablesWithFullFieldInfo() async {
     final db = await getDatabase();
-    final result = <String, List<String>>{};
+    final result = <String, Map<String, Map<String, dynamic>>>{};
 
     try {
-      // Get all user-defined tables
+      // Get tables + their CREATE SQL
       final tablesQuery = await db.rawQuery(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
+        "SELECT name, sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
       );
 
-      for (final tableRow in tablesQuery) {
-        final tableName = tableRow['name'] as String;
+      for (final table in tablesQuery) {
+        final tableName = table['name'] as String;
+        final createSql = (table['sql'] as String?)?.toUpperCase() ?? '';
 
-        // Get columns for this table
         final columnsQuery = await db.rawQuery('PRAGMA table_info($tableName)');
-        final columns = columnsQuery.map((c) => c['name'] as String).toList();
 
-        result[tableName] = columns;
+        final fields = <String, Map<String, dynamic>>{};
+
+        for (final col in columnsQuery) {
+          final name = col['name'] as String;
+          final type = (col['type'] as String?) ?? 'UNKNOWN';
+          final isPrimaryKey = (col['pk'] as int) == 1;
+
+          // SQLite AUTOINCREMENT detection
+          final isAutoIncrement =
+              isPrimaryKey &&
+              type.toUpperCase() == 'INTEGER' &&
+              createSql.contains('AUTOINCREMENT');
+
+          fields[name] = {
+            'type': type,
+            'primaryKey': isPrimaryKey,
+            'autoIncrement': isAutoIncrement,
+          };
+        }
+
+        result[tableName] = fields;
       }
     } catch (e, st) {
-      print('❌ Failed to list tables with fields: $e');
+      print('❌ Failed to read schema: $e');
       print(st);
     }
 

@@ -36,6 +36,7 @@ class _MyAppState extends State<MyApp> {
     final userFields = {
       'userId': ColumnDef(
         type: FieldType.PRIMARY,
+        primaryKeyName: FieldType.TEXT.sqlType,
         autoIncrement: false, // <-- Primary key without auto-increment
       ),
       'name': ColumnDef(type: FieldType.TEXT, notNull: true),
@@ -56,96 +57,92 @@ class _MyAppState extends State<MyApp> {
       },
     );
 
-    final test2 = {
-      'userId': ColumnDef(
-        type: FieldType.PRIMARY,
-        autoIncrement: true, // <-- Primary key without auto-increment
-      ),
-      'name': ColumnDef(type: FieldType.TEXT, notNull: true),
-      'email': ColumnDef(type: FieldType.TEXT),
-      'age': ColumnDef(type: FieldType.INTEGER, defaultValue: 18),
-    };
+    // final test2 = {
+    //   'userId': ColumnDef(
+    //     type: FieldType.PRIMARY,
+    //     autoIncrement: true, // <-- Primary key without auto-increment
+    //   ),
+    //   'name': ColumnDef(type: FieldType.TEXT, notNull: true),
+    //   'email': ColumnDef(type: FieldType.TEXT),
+    //   'age': ColumnDef(type: FieldType.INTEGER, defaultValue: 18),
+    // };
 
     // Create the table
-    await _reactiveSqldbPlugin.createTable(
-      'testing2',
-      fields: test2,
-      status: (success, tableName) {
-        if (success) {
-          print('Table $tableName created successfully!');
-        } else {
-          print('Failed to create table $tableName');
-        }
-      },
-    );
+    // await _reactiveSqldbPlugin.createTable(
+    //   'testing2',
+    //   fields: test2,
+    //   status: (success, tableName) {
+    //     if (success) {
+    //       print('Table $tableName created successfully!');
+    //     } else {
+    //       print('Failed to create table $tableName');
+    //     }
+    //   },
+    // );
 
     ///Create Tables
-    await _reactiveSqldbPlugin.createTable(
-      "user",
-      fields: {
-        "name": ColumnDef(type: FieldType.TEXT, defaultValue: 'asfd'),
-        "email": ColumnDef(type: FieldType.TEXT, defaultValue: 'sdfasf'),
-        "gennder": ColumnDef(type: FieldType.TEXT),
-      },
-      status: (status, tableName) {},
-    );
+    // await _reactiveSqldbPlugin.createTable(
+    //   "user",
+    //   fields: {
+    //     "name": ColumnDef(type: FieldType.TEXT, defaultValue: 'asfd'),
+    //     "email": ColumnDef(type: FieldType.TEXT, defaultValue: 'sdfasf'),
+    //     "gennder": ColumnDef(type: FieldType.TEXT),
+    //   },
+    //   status: (status, tableName) {},
+    // );
 
     ///Listen Tables
-    _reactiveSqldbPlugin.watchTable("user").listen((rows) {
+    _reactiveSqldbPlugin.watchTable("testing").listen((rows) {
       print('Rows: $rows');
     });
 
-    var s = await _reactiveSqldbPlugin.get('user', {
-      "name": "DarithKuch",
-      "gennder": null,
-    });
-    print(s);
-
     ///Insert Data
-    await _reactiveSqldbPlugin.insert("user", {
+    await _reactiveSqldbPlugin.insert("testing", {
+      "userId": "u124",
       "name": "DarithKuch",
       "email": "david@gmail.com",
-      "gennder": null,
+      "age": "19",
     });
 
     ///Update by id Data
-    await _reactiveSqldbPlugin.update("user", 2, {
-      "name": "David 1",
-      "email": "david1@gmail.com",
-    });
+    // await _reactiveSqldbPlugin.update("testing", "u123", {
+    //   "name": "David 1",
+    //   "email": "david1@gmail.com",
+    // });
 
     //Delete by id
     //await _reactiveSqldbPlugin.delete("user", id: 2);
 
-    await _reactiveSqldbPlugin.updateQuery(
-      'user',
-      {'name': "Updated", "email": "test@mgial.com"},
-      {'id': 2},
-    );
+    // await _reactiveSqldbPlugin.updateQuery(
+    //   'testing',
+    //   {'name': "Updated", "email": "test@mgial.com"},
+    //   {'id': 2},
+    // );
 
     //Get All item
     var userAll = await _reactiveSqldbPlugin.getAll(
-      "user",
+      "testing",
       {},
       offset: 0,
       limit: 20,
     );
+    print(userAll);
 
     // final rows = await _reactiveSqldbPlugin.getAll('user', {
     //   'deleted_at': ['!=', null],
     // });
 
     //Query All
-    var userAllQuery = await _reactiveSqldbPlugin.query(
-      "user",
-      where: 'name = ? AND email = ?',
-      args: ["David", 'darith@gmail.com'],
-      offset: 0,
-      limit: 10,
-    );
+    // var userAllQuery = await _reactiveSqldbPlugin.query(
+    //   "user",
+    //   where: 'name = ? AND email = ?',
+    //   args: ["David", 'darith@gmail.com'],
+    //   offset: 0,
+    //   limit: 10,
+    // );
 
     ///Get one item
-    var user = await _reactiveSqldbPlugin.get("user", {"id": 2});
+    // var user = await _reactiveSqldbPlugin.get("user", {"id": 2});
 
     // final row = await _reactiveSqldbPlugin.get('user', {
     //   'deleted_at': ['!=', null],
@@ -153,14 +150,15 @@ class _MyAppState extends State<MyApp> {
 
     ///State Change
     setState(() {
-      _name = user != null ? user["name"].toString() : "";
+      // _name = user != null ? user["name"].toString() : "";
     });
 
-    print("User get: $user");
+    //print("User get: $user");
   }
 
   Future listTabales() async {
-    final tablesWithFields = await _reactiveSqldbPlugin.listTablesWithFields();
+    final tablesWithFields = await _reactiveSqldbPlugin
+        .listTablesWithFullFieldInfo();
 
     tablesWithFields.forEach((table, columns) {
       print('Table: $table, Columns: $columns');
@@ -185,6 +183,7 @@ class _MyAppState extends State<MyApp> {
                 final userFields = {
                   'userId': ColumnDef(
                     type: FieldType.PRIMARY,
+                    primaryKeyName: FieldType.TEXT.sqlType,
                     autoIncrement:
                         false, // <-- Primary key without auto-increment
                   ),
